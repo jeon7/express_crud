@@ -1,0 +1,25 @@
+{
+  "name": "node_js",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jeon7/node.js_crud.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jeon7/node.js_crud/issues"
+  },
+  "homepage": "https://github.com/jeon7/node.js_crud#readme",
+  "dependencies": {
+    "sanitize-html": "^1.20.1"
+  }
+}
