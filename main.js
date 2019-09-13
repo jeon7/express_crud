@@ -1,224 +1,178 @@
-var http = require('http');
-var fs = require('fs');
-var url = require('url');
-var qs = require('querystring');
-var path = require('path');
-var template = require('./lib/template.js');
-var dirData = "./data";
-var sanitizeHtml = require('sanitize-html');
+const express = require('express');
+const app = express();
 
-var app = http.createServer(function (request, response) {
-  var queryString = request.url;
-  var queryData = url.parse(queryString, true).query;
-  var pathName = url.parse(queryString, true).pathname;
+const fs = require('fs');
+const qs = require('querystring');
+const path = require('path');
 
-  if (pathName === "/") {
-    showWebpage(queryData.id, response);
-  } else if (pathName === "/create") {
-    create(response);
-  } else if (pathName === "/create_process") {
-    createProcess(request, response);
-  } else if (pathName === "/update") {
-    update(queryData.id, response);
-  } else if (pathName === "/update_process") {
-    updateProcess(request, response);
-  } else if (pathName === "/delete_process") {
-    deleteProcess(request, response);
-  } else {
-    response.writeHead(404);
-    response.end("Not Found");
-  }
-});
+const port = 3000;
+const dirData = "./data";
+const template = require('./lib/template.js');
+const sanitizeHtml = require('sanitize-html');
 
-app.listen(3000);
-
-function showWebpage(queryData_id, response) {
-  var title;
-  var description;
-  var body;
-  var list;
-  var control;
-  var html;
-
-  if (queryData_id === undefined) {
-    fs.readdir(dirData, function (error, fileList) {
-      title = "Welcome";
-      description = "Hello Node.js";
-      list = template.list(fileList);
-      control = `
-        <a href="/create">create</a>
-        `;
-      body = `<h2>${title}</h2>${description}`;
-
-      html = template.html(title, list, body, control);
-      response.writeHead(200);
-      response.end(html);
-    });
-  }
-  else {
-    title = queryData_id;
-    var filteredTitle = path.parse(title).base;
-    fs.readFile(`${dirData}/${filteredTitle}`, "utf8", function (err, description) {
-      fs.readdir(dirData, function (error, fileList) {
-        var sanitizedTitle = sanitizeHtml(title);
-        var sanitizedDescription = sanitizeHtml(description, {
-          allowedTags: ['h1']
-        });
-
-        list = template.list(fileList);
-        control = `
-        <a href="/create">create</a>
-        <a href="/update?id=${sanitizedTitle}">update</a>
-        
-        <form action="delete_process" method="POST" 
-        onSubmit='return confirm("are you sure that you want to delete?")'>
-          <input type="hidden" name="title" value="${sanitizedTitle}">
-          <input type="submit" value="delete">
-        </form>
-        `;
-        body = `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`;
-        html = template.html(sanitizedTitle, list, body, control);
-        response.writeHead(200);
-        response.end(html);
-      });
-    });
-  }
-}
-
-function create(response) {
-  var title;
-  var body;
-  var list;
-  var control;
-  var html;
+app.get('/', function (request, response) {
 
   fs.readdir(dirData, function (error, fileList) {
-    
-    title = "WEB - create";
-    body = `
-    <form action="create_process" method="POST">
+    const title = "Welcome";
+    const description = "Hello Node.js";
+    const list = template.list(fileList);
+    const control = `
+      <a href="/create">create</a>
+      `;
+    const body = `<h2>${title}</h2>${description}`;
+    const html = template.html(title, list, body, control);
+    response.send(html);
+  });
+
+});
+
+app.get('/page/:pageId', function (request, response) {
+
+  const title = request.params.pageId;
+  const filteredTitle = path.parse(title).base;
+
+  fs.readFile(`${dirData}/${filteredTitle}`, "utf8", function (err, description) {
+    fs.readdir(dirData, function (error, fileList) {
+      const sanitizedTitle = sanitizeHtml(title);
+      const sanitizedDescription = sanitizeHtml(description, {
+        allowedTags: ['h1']
+      });
+
+      const list = template.list(fileList);
+      const control = `
+      <a href="/create">create</a>
+      <a href="/update/${sanitizedTitle}">update</a>
+
+      <form action="/delete_process" method="POST"
+      onSubmit='return confirm("are you sure that you want to delete?")'>
+        <input type="hidden" name="title" value="${sanitizedTitle}">
+        <input type="submit" value="delete">
+      </form>
+      `;
+      const body = `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`;
+      const html = template.html(sanitizedTitle, list, body, control);
+      response.send(html);
+    });
+  });
+
+});
+
+app.get('/create', function (request, response) {
+
+  fs.readdir(dirData, function (error, fileList) {
+    const title = "WEB - create";
+    const body = `
+    <form action="/create_process" method="POST">
     <p><input type="text" name="title" placeholder="title"></p>
     <p><textarea name="description" cols="50" rows="20" placeholder="description"></textarea></p>
     <p><input type="submit"></p>
     </form>
     `;
-    list = template.list(fileList);
-    control = ``;
-    
-    html = template.html(title, list, body, control);
-    response.writeHead(200);
-    response.end(html);
+    const list = template.list(fileList);
+    const control = ``;
+    const html = template.html(title, list, body, control);
+    response.send(html);
   });
-}
 
-function createProcess(request, response) {
-  var body = ``;
-  var post;
-  var postTitle;
-  var postDescription;
+});
+
+app.post('/create_process', function (request, response) {
+
+  let body = ``;
 
   request.on('data', function (data) {
     body += data;
   });
 
   request.on('end', function () {
-    post = qs.parse(body);
-    postTitle = post.title;
-    postDescription = post.description;
+    const post = qs.parse(body);
+    const postTitle = post.title;
+    const postDescription = post.description;
 
     //  user input is empty
     if (!postTitle || !postDescription) {
-      response.writeHead(200);
-      response.end("fill the information");
+      response.send("fill the information");
     } else {
       var filteredPostTitle = path.parse(postTitle).base;
       fs.writeFile(`${dirData}/${filteredPostTitle}`, postDescription, 'utf8', function (err) {
       });
-      response.writeHead(301, { Location: `/?id=${filteredPostTitle}` });
-      response.end();
+      response.redirect(301, `/page/${filteredPostTitle}`);
     }
   });
-}
 
-function update(queryData_id, response) {
-  var title = queryData_id;
-  var body;
-  var list;
-  var control;
-  var html;
+});
+
+app.get('/update/:pageId', function (request, response) {
+
+  const title = request.params.pageId;
+
   fs.readFile(`${dirData}/${title}`, "utf8", function (err, description) {
     fs.readdir(dirData, function (error, fileList) {
-      list = template.list(fileList);
-      body = `
-        <form action="update_process" method="POST">
+      const list = template.list(fileList);
+      const body = `
+        <form action="/update_process" method="POST">
         <p><input type="hidden" name="title_origin" value="${title}")</p>
         <p><input type="text" name="title_updated" value="${title}"></p>
         <p><textarea name="description" cols="50" rows="20">${description}</textarea></p>
         <p><input type="submit"></p>
         </form>
         `;
-      control = ``;
-      html = template.html(title, list, body, control);
-      response.writeHead(200);
-      response.end(html);
+      const control = ``;
+      const html = template.html(title, list, body, control);
+      response.send(html);
     });
   });
-}
 
-function updateProcess(request, response) {
-  var body = ``;
-  var post;
-  var postTitleOrigin;
-  var postTitleUpdated;
-  var postDescription;
+});
+
+app.post('/update_process', function (request, response) {
+
+  let body = ``;
 
   request.on('data', function (data) {
     body += data;
   });
 
   request.on('end', function () {
-    post = qs.parse(body);
-    postTitleOrigin = post.title_origin;
-    postTitleUpdated = post.title_updated;
-    postDescription = post.description;
+    const post = qs.parse(body);
+    const postTitleOrigin = post.title_origin;
+    const postTitleUpdated = post.title_updated;
+    const postDescription = post.description;
 
     //  user input is empty
     if (!postTitleUpdated || !postDescription) {
-      response.writeHead(200);
-      response.end("fill the information");
+      response.send("fill the information");
     } else {
-      var filteredPostTitleUpdated = path.parse(postTitleUpdated).base;
+      const filteredPostTitleUpdated = path.parse(postTitleUpdated).base;
       fs.rename(`${dirData}/${postTitleOrigin}`, `${dirData}/${filteredPostTitleUpdated}`, function (err) {
-
       });
       fs.writeFile(`${dirData}/${filteredPostTitleUpdated}`, postDescription, 'utf8', function (err) {
-
       });
-
-      response.writeHead(301, { Location: `/?id=${filteredPostTitleUpdated}` });
-      response.end();
+      response.redirect(301, `/page/${filteredPostTitleUpdated}`);
     }
   });
-}
 
-function deleteProcess(request, response) {
-  var body = ``;
-  var post;
-  var postTitle;
+});
+
+app.post('/delete_process', function (request, response) {
+
+  let body = ``;
 
   request.on('data', function (data) {
     body += data;
   });
 
   request.on('end', function () {
-    post = qs.parse(body);
-    postTitle = post.title;
-    var filteredPostTitle = path.parse(postTitle).base;
+    const post = qs.parse(body);
+    const postTitle = post.title;
+    const filteredPostTitle = path.parse(postTitle).base;
     fs.unlink(`${dirData}/${filteredPostTitle}`, function (err) {
-
     });
-
-    response.writeHead(301, { Location: `/` });
-    response.end();
+    response.redirect(301, `/`);
   });
-}
+
+});
+
+app.listen(port, function () {
+  console.log(`Example app listening on port ${port}!`);
+}); 
