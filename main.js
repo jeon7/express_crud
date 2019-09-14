@@ -10,6 +10,8 @@ const template = require('./lib/template.js');
 const sanitizeHtml = require('sanitize-html');
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
+const compression = require('compression');
+app.use(compression());
 
 app.get('/', function (request, response) {
   fs.readdir(dirData, function (error, fileList) {
