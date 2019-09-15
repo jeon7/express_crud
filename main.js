@@ -7,68 +7,82 @@ const port = 3000;
 const dirData = "./data";
 const template = require('./lib/template.js');
 
+// third party middle ware
 const sanitizeHtml = require('sanitize-html');
 const bodyParser = require('body-parser');
-app.use(bodyParser.urlencoded({ extended: false }));
 const compression = require('compression');
-app.use(compression());
 
-app.get('/', function (request, response) {
+app.use(express.static('public'));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(compression());
+app.get('/*', function (request, response, next) {
   fs.readdir(dirData, function (error, fileList) {
-    const title = "Welcome";
-    const description = "Hello Node.js";
-    const list = template.list(fileList);
-    const control = `
-      <a href="/create">create</a>
-      `;
-    const body = `<h2>${title}</h2>${description}`;
-    const html = template.html(title, list, body, control);
-    response.send(html);
+    request.list = fileList;
+    console.log(request.list);
+    next();
   });
 });
 
-app.get('/page/:pageId', function (request, response) {
+app.get('/', function (request, response) {
+  const title = "Welcome";
+  const description = "Hello Node.js";
+  const list = template.list(request.list);
+  const body = `
+      <h2>${title}</h2>
+      ${description}
+      <img src="/images/hello.jpg" style="width:300px; display:block; margin-top:10px;">
+      <p>Photo by Pablo Gentile on Unsplash</p>
+      `;
+  const control = `
+      <a href="/create">create</a>
+      `;
+  const html = template.html(title, list, body, control);
+  response.send(html);
+});
+
+app.get('/page/:pageId', function (request, response, next) {
   const title = request.params.pageId;
   const filteredTitle = path.parse(title).base;
 
   fs.readFile(`${dirData}/${filteredTitle}`, "utf8", function (err, description) {
-    fs.readdir(dirData, function (error, fileList) {
+    if(err) {
+      next(err);
+    } else {
       const sanitizedTitle = sanitizeHtml(title);
       const sanitizedDescription = sanitizeHtml(description, {
         allowedTags: ['h1']
       });
-      const list = template.list(fileList);
+      const list = template.list(request.list);
       const control = `
-      <a href="/create">create</a>
-      <a href="/update/${sanitizedTitle}">update</a>
-      <form action="/delete_process" method="POST"
-      onSubmit='return confirm("are you sure that you want to delete?")'>
-        <input type="hidden" name="title" value="${sanitizedTitle}">
-        <input type="submit" value="delete">
-      </form>
-      `;
+        <a href="/create">create</a>
+        <a href="/update/${sanitizedTitle}">update</a>
+        <form action="/delete_process" method="POST"
+        onSubmit='return confirm("are you sure that you want to delete?")'>
+          <input type="hidden" name="title" value="${sanitizedTitle}">
+          <input type="submit" value="delete">
+        </form>
+        `;
       const body = `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`;
       const html = template.html(sanitizedTitle, list, body, control);
       response.send(html);
-    });
+    }
+  
   });
 });
 
 app.get('/create', function (request, response) {
-  fs.readdir(dirData, function (error, fileList) {
-    const title = "WEB - create";
-    const body = `
+  const title = "WEB - create";
+  const body = `
     <form action="/create_process" method="POST">
     <p><input type="text" name="title" placeholder="title"></p>
     <p><textarea name="description" cols="50" rows="20" placeholder="description"></textarea></p>
     <p><input type="submit"></p>
     </form>
     `;
-    const list = template.list(fileList);
-    const control = ``;
-    const html = template.html(title, list, body, control);
-    response.send(html);
-  });
+  const list = template.list(request.list);
+  const control = ``;
+  const html = template.html(title, list, body, control);
+  response.send(html);
 });
 
 app.post('/create_process', function (request, response) {
@@ -90,9 +104,8 @@ app.post('/create_process', function (request, response) {
 app.get('/update/:pageId', function (request, response) {
   const title = request.params.pageId;
   fs.readFile(`${dirData}/${title}`, "utf8", function (err, description) {
-    fs.readdir(dirData, function (error, fileList) {
-      const list = template.list(fileList);
-      const body = `
+    const list = template.list(request.list);
+    const body = `
         <form action="/update_process" method="POST">
         <p><input type="hidden" name="title_origin" value="${title}")</p>
         <p><input type="text" name="title_updated" value="${title}"></p>
@@ -100,10 +113,9 @@ app.get('/update/:pageId', function (request, response) {
         <p><input type="submit"></p>
         </form>
         `;
-      const control = ``;
-      const html = template.html(title, list, body, control);
-      response.send(html);
-    });
+    const control = ``;
+    const html = template.html(title, list, body, control);
+    response.send(html);
   });
 });
 
@@ -133,6 +145,15 @@ app.post('/delete_process', function (request, response) {
   fs.unlink(`${dirData}/${filteredPostTitle}`, function (err) {
   });
   response.redirect(301, `/`);
+});
+
+app.use(function(request, response, next) {
+  response.status(404).send("The page cannot be found");
+});
+
+app.use(function(err, request, response, next) {
+  console.error(err.stack);
+  response.status(500).send("The page doesn't exist");
 });
 
 app.listen(port, function () {
