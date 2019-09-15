@@ -14,7 +14,7 @@ router.get('/', function (request, response) {
       <p>Photo by Pablo Gentile on Unsplash</p>
       `;
     const control = `
-      <a href="/create">create</a>
+      <a href="/topic/create">create</a>
       `;
     const html = template.html(title, list, body, control);
     response.send(html);

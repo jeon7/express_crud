@@ -8,12 +8,16 @@ const topicRouter = require('./routes/topic.js');
 const indexRouter = require('./routes/index.js');
 
 // third party middle ware
-const bodyParser = require('body-parser');
+const helmet = require('helmet');
+const bodyParser = require('body-parser'); // to extract POST data
 const compression = require('compression');
 
 app.use(express.static('public'));
+app.use(helmet());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(compression());
+
+// custom middle ware for reading file
 app.get('/*', function (request, response, next) {
     fs.readdir(dirData, function (error, fileList) {
         request.list = fileList;
